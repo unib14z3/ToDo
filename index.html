@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Task Planner – Cloud Sync</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap');
+
+:root{
+  --bg:#f5f5f0;--surface:#ffffff;--border:#e0ddd6;--text:#1a1a18;
+  --muted:#888;--accent:#2563eb;--danger:#dc2626;--success:#16a34a;--warn:#d97706;
+}
+
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── AUTH ── */
+#authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#eff6ff 0%,#f5f5f0 60%);}
+.auth-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:400px;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+.auth-box h1{font-size:22px;font-weight:600;margin-bottom:4px;}
+.auth-box .sub{font-size:14px;color:var(--muted);margin-bottom:24px;}
+.tabs{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px;}
+.tabs button{flex:1;padding:9px;border:none;background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--muted);transition:.15s;}
+.tabs button.active{background:var(--text);color:#fff;}
+
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;}
+.field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:.15s;}
+.field input:focus{border-color:var(--accent);}
+.field input.verified{border-color:var(--success);background:#f0fdf4;}
+
+.email-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:6px;}
+.email-row .field{flex:1;margin-bottom:0;}
+.btn-send-otp{padding:0 16px;background:var(--text);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;height:40px;transition:.15s;flex-shrink:0;}
+.btn-send-otp:disabled{opacity:.5;cursor:not-allowed;}
+
+.otp-section{margin-bottom:12px;}
+.otp-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.otp-boxes{display:flex;gap:8px;}
+.otp-boxes input{
+  width:44px;height:50px;text-align:center;
+  font-size:22px;font-weight:600;font-family:'DM Mono',monospace;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--text);outline:none;transition:.15s;
+}
+.otp-boxes input:focus{border-color:var(--accent);}
+.otp-hint{font-size:12px;color:var(--muted);margin-top:6px;min-height:16px;line-height:1.5;}
+.verified-tag{font-size:12px;color:var(--success);margin-top:6px;display:none;font-weight:500;}
+
+.btn-primary{width:100%;padding:11px;background:var(--text);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:.15s;margin-top:4px;}
+.btn-primary:hover{background:#111;}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.auth-msg{font-size:13px;margin-top:10px;text-align:center;min-height:18px;}
+.auth-msg.err{color:var(--danger);}
+.auth-msg.ok{color:var(--success);}
+
+/* ── APP ── */
+#appScreen{display:none;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left h2{font-size:16px;font-weight:600;}
+.topbar-left .tsub{font-size:13px;color:var(--muted);}
+.sync-badge{font-size:12px;padding:3px 8px;border-radius:999px;margin-left:8px;font-weight:500;}
+.sync-ok{background:#dcfce7;color:#15803d;}
+.sync-ing{background:#fef9c3;color:#a16207;}
+.sync-err{background:#fee2e2;color:#b91c1c;}
+.btn-sm{padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;font-size:13px;cursor:pointer;transition:.15s;}
+.btn-sm:hover{background:var(--bg);}
+.main{max-width:720px;margin:0 auto;padding:24px 16px;}
+.load-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;}
+.load-top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:10px;}
+.load-top span:first-child{font-weight:500;}
+.load-top span:last-child{color:var(--muted);}
+.bar-bg{width:100%;height:8px;background:var(--bg);border-radius:999px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:999px;transition:.4s;}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center;}
+.stat h2{font-size:24px;font-weight:600;}
+.stat p{font-size:12px;color:var(--muted);margin-top:2px;}
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+.form-row{display:flex;gap:10px;}
+.form-row .field{flex:1;}
+.form-card .field input,.form-card .field select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);outline:none;}
+.form-card .field input:focus,.form-card .field select:focus{border-color:var(--accent);}
+.task{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:.15s;}
+.task:hover{border-color:#bbb;}
+.task-left{display:flex;align-items:center;gap:12px;}
+.task-left input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--accent);}
+.task-title{font-size:14px;font-weight:500;}
+.task-title.done{text-decoration:line-through;color:var(--muted);}
+.task-meta{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;}
+.pill{font-size:11px;padding:3px 8px;border-radius:999px;font-weight:500;}
+.pill-high{background:#fee2e2;color:#b91c1c;}
+.pill-med{background:#fef9c3;color:#a16207;}
+.pill-low{background:#dcfce7;color:#15803d;}
+.pill-time{background:var(--bg);color:var(--muted);border:1px solid var(--border);}
+.btn-del{padding:7px 12px;background:transparent;color:var(--danger);border:1px solid #fecaca;border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;transition:.15s;}
+.btn-del:hover{background:#fee2e2;}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;}
+.task-list{display:flex;flex-direction:column;gap:10px;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ AUTH ═══════════ -->
+<div id="authScreen">
+  <div class="auth-box">
+    <h1>📋 Task Planner</h1>
+    <p class="sub">Synced with AWS Lambda + DynamoDB</p>
+
+    <div class="tabs">
+      <button class="active" id="tabLogin"  onclick="switchTab('login')">Login</button>
+      <button               id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <div class="field"><label>PRN</label><input id="lPrn" placeholder="e.g. 202501040233" /></div>
+      <div class="field"><label>Password</label><input type="password" id="lPass" placeholder="Password" /></div>
+      <button class="btn-primary" id="loginBtn" onclick="login()">Login</button>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="signupForm" style="display:none;">
+      <div class="field"><label>Full Name</label><input id="sName" placeholder="Your name" /></div>
+      <div class="field"><label>PRN</label><input id="sPrn" placeholder="e.g. 202501040233" /></div>
+      <div class="field"><label>Password</label><input type="password" id="sPass" placeholder="Create password" /></div>
+
+      <!-- Email row -->
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Email</label>
+      <div class="email-row">
+        <div class="field"><input type="email" id="sEmail" placeholder="you@example.com" /></div>
+        <button class="btn-send-otp" id="sendOtpBtn" onclick="sendOtp()">Send OTP</button>
+      </div>
+
+      <!-- OTP boxes -->
+      <div id="otpSection" style="display:none;" class="otp-section">
+        <div class="otp-label">6-digit code sent to your email</div>
+        <div class="otp-boxes" id="otpBoxes">
+          <input maxlength="1" inputmode="numeric" oninput="otpInput(this,0)" onkeydown="otpKey(event,0)" />
+          <input maxlength="1" inputmode="numeric" oninput="otpInput(this,1)" onkeydown="otpKey(event,1)" />
+          <input maxlength="1" inputmode="numeric" oninput="otpInput(this,2)" onkeydown="otpKey(event,2)" />
+          <input maxlength="1" inputmode="numeric" oninput="otpInput(this,3)" onkeydown="otpKey(event,3)" />
+          <input maxlength="1" inputmode="numeric" oninput="otpInput(this,4)" onkeydown="otpKey(event,4)" />
+          <input maxlength="1" inputmode="numeric" oninput="otpInput(this,5)" onkeydown="otpKey(event,5)" />
+        </div>
+        <div class="otp-hint" id="otpHint">Enter the code from your inbox.</div>
+        <div class="verified-tag" id="verifiedTag">✓ Email verified</div>
+      </div>
+
+      <button class="btn-primary" id="signupBtn" onclick="signup()">Create Account</button>
+    </div>
+
+    <div class="auth-msg" id="authMsg"></div>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="appScreen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2 id="userWelcome">Welcome</h2>
+      <div class="tsub">Cloud synced task planner <span class="sync-badge sync-ok" id="syncBadge">✓ Synced</span></div>
+    </div>
+    <button class="btn-sm" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="main">
+    <div class="load-card">
+      <div class="load-top"><span>Daily Load</span><span id="loadText">0h / 8h</span></div>
+      <div class="bar-bg"><div class="bar-fill" id="loadBar" style="width:0%;background:var(--success);"></div></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><h2 id="total">0</h2><p>Total</p></div>
+      <div class="stat"><h2 id="pending">0</h2><p>Pending</p></div>
+      <div class="stat"><h2 id="completed">0</h2><p>Completed</p></div>
+    </div>
+
+    <div class="form-card">
+      <div class="field"><input id="taskInput" placeholder="Enter task..." /></div>
+      <div class="form-row">
+        <div class="field"><input type="number" id="timeInput" placeholder="Hours" min="0.5" step="0.5" /></div>
+        <div class="field">
+          <select id="priorityInput">
+            <option value="Low">Low Priority</option>
+            <option value="Medium">Medium Priority</option>
+            <option value="High">High Priority</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="addTask()">+ Add Task</button>
+    </div>
+
+    <div class="task-list" id="taskList"></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════
+const API = 'https://e6brwl5ja3.execute-api.us-east-1.amazonaws.com';
+
+let tasks = [];
+let session = null;
+let emailVerified = false;
+
+// ── helpers ──
+
+function setMsg(msg, type='err'){
+  const el = document.getElementById('authMsg');
+  el.textContent = msg;
+  el.className = 'auth-msg ' + type;
+}
+
+function setSyncBadge(state){
+  const b = document.getElementById('syncBadge');
+  b.className = 'sync-badge';
+  if(state==='ok')  { b.classList.add('sync-ok');  b.textContent='✓ Synced'; }
+  else if(state==='ing') { b.classList.add('sync-ing'); b.textContent='⟳ Syncing…'; }
+  else              { b.classList.add('sync-err'); b.textContent='✗ Sync failed'; }
+}
+
+// ── OTP box controls ──
+
+function otpInput(el, idx){
+  el.value = el.value.replace(/\D/,'');
+  const boxes = document.querySelectorAll('.otp-boxes input');
+  if(el.value && idx < 5) boxes[idx+1].focus();
+  if(getOtp().length === 6) verifyOtp();
+}
+
+function otpKey(e, idx){
+  const boxes = document.querySelectorAll('.otp-boxes input');
+  if(e.key==='Backspace' && !boxes[idx].value && idx > 0) boxes[idx-1].focus();
+}
+
+function getOtp(){
+  return [...document.querySelectorAll('.otp-boxes input')].map(i=>i.value).join('');
+}
+
+// ── send OTP ──
+
+async function sendOtp(){
+  const email = document.getElementById('sEmail').value.trim();
+  if(!email || !email.includes('@')){ setMsg('Enter a valid email first.'); return; }
+
+  const btn = document.getElementById('sendOtpBtn');
+  btn.disabled=true; btn.textContent='Sending…';
+  setMsg('');
+
+  try{
+    const r = await fetch(`${API}/send-otp`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email })
+    });
+    const d = await r.json();
+    if(!r.ok){ setMsg(d.error||'Failed to send OTP.'); btn.disabled=false; btn.textContent='Send OTP'; return; }
+
+    document.getElementById('otpSection').style.display='block';
+    document.querySelectorAll('.otp-boxes input')[0].focus();
+    setMsg(`Code sent to ${email}`, 'ok');
+
+    // resend countdown
+    let sec = 60;
+    btn.textContent = `Resend (${sec}s)`;
+    const timer = setInterval(()=>{
+      sec--;
+      btn.textContent = `Resend (${sec}s)`;
+      if(sec <= 0){ clearInterval(timer); btn.disabled=false; btn.textContent='Resend OTP'; }
+    }, 1000);
+
+  }catch{
+    setMsg('Network error — check your API URL.');
+    btn.disabled=false; btn.textContent='Send OTP';
+  }
+}
+
+// ── verify OTP (auto-triggered when all 6 digits entered) ──
+
+async function verifyOtp(){
+  const email = document.getElementById('sEmail').value.trim();
+  const otp   = getOtp();
+  document.getElementById('otpHint').textContent = 'Verifying…';
+
+  try{
+    const r = await fetch(`${API}/verify-otp`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email, otp })
+    });
+    const d = await r.json();
+
+    if(!r.ok){
+      document.getElementById('otpHint').textContent = d.error || 'Incorrect OTP. Try again.';
+      emailVerified = false;
+      return;
+    }
+
+    emailVerified = true;
+    document.getElementById('sEmail').classList.add('verified');
+    document.getElementById('verifiedTag').style.display = 'block';
+    document.getElementById('otpHint').textContent = '';
+    document.getElementById('sendOtpBtn').disabled = true;
+    document.querySelectorAll('.otp-boxes input').forEach(i => i.disabled = true);
+    setMsg('Email verified! Fill remaining fields and create your account.', 'ok');
+
+  }catch{
+    document.getElementById('otpHint').textContent = 'Network error verifying OTP.';
+  }
+}
+
+// ── tabs ──
+
+function switchTab(tab){
+  const isLogin = tab==='login';
+  document.getElementById('loginForm').style.display  = isLogin?'block':'none';
+  document.getElementById('signupForm').style.display = isLogin?'none':'block';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabSignup').classList.toggle('active', !isLogin);
+  setMsg('');
+}
+
+// ── signup ──
+
+async function signup(){
+  if(!emailVerified){ setMsg('Verify your email with OTP first.'); return; }
+  const name  = document.getElementById('sName').value.trim();
+  const prn   = document.getElementById('sPrn').value.trim();
+  const pass  = document.getElementById('sPass').value.trim();
+  const email = document.getElementById('sEmail').value.trim();
+  if(!name||!prn||!pass){ setMsg('Fill all fields.'); return; }
+
+  const btn = document.getElementById('signupBtn');
+  btn.disabled=true; btn.textContent='Creating account…';
+
+  try{
+    const r = await fetch(`${API}/signup`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, prn, password:pass, email })
+    });
+    const d = await r.json();
+    if(!r.ok){ setMsg(d.error||'Signup failed.'); return; }
+    session={name,prn,password:pass}; tasks=[];
+    startApp();
+  }catch{ setMsg('Network error.'); }
+  finally{ btn.disabled=false; btn.textContent='Create Account'; }
+}
+
+// ── login ──
+
+async function login(){
+  const prn  = document.getElementById('lPrn').value.trim();
+  const pass = document.getElementById('lPass').value.trim();
+  if(!prn||!pass){ setMsg('Fill all fields.'); return; }
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled=true; btn.textContent='Logging in…';
+
+  try{
+    const r = await fetch(`${API}/login`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prn, password:pass })
+    });
+    const d = await r.json();
+    if(!r.ok){ setMsg(d.error||'Login failed.'); return; }
+    session={name:d.name,prn,password:pass}; tasks=d.tasks||[];
+    startApp();
+  }catch{ setMsg('Network error.'); }
+  finally{ btn.disabled=false; btn.textContent='Login'; }
+}
+
+function startApp(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  document.getElementById('userWelcome').textContent=`Welcome, ${session.name}`;
+  renderTasks();
+}
+
+function logout(){ session=null; tasks=[]; location.reload(); }
+
+// ── sync ──
+
+async function syncToAWS(){
+  if(!session) return;
+  setSyncBadge('ing');
+  try{
+    const r = await fetch(`${API}/tasks`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prn:session.prn, password:session.password, tasks })
+    });
+    setSyncBadge(r.ok?'ok':'err');
+  }catch{ setSyncBadge('err'); }
+}
+
+// ── task CRUD ──
+
+function addTask(){
+  const input=document.getElementById('taskInput');
+  const title=input.value.trim();
+  if(!title) return;
+  tasks.unshift({
+    id:Date.now(), title,
+    priority:document.getElementById('priorityInput').value,
+    estimatedTime:parseFloat(document.getElementById('timeInput').value)||1,
+    done:false
+  });
+  input.value='';
+  document.getElementById('timeInput').value='';
+  syncToAWS(); renderTasks();
+}
+
+function toggleTask(id){ tasks=tasks.map(t=>t.id===id?{...t,done:!t.done}:t); syncToAWS(); renderTasks(); }
+function deleteTask(id){ tasks=tasks.filter(t=>t.id!==id); syncToAWS(); renderTasks(); }
+function pillClass(p){ return p==='High'?'pill-high':p==='Medium'?'pill-med':'pill-low'; }
+
+function renderTasks(){
+  const list=document.getElementById('taskList');
+  list.innerHTML=!tasks.length
+    ?'<div class="empty">No tasks yet. Add one above.</div>'
+    :tasks.map(t=>`
+      <div class="task">
+        <div class="task-left">
+          <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
+          <div>
+            <div class="task-title${t.done?' done':''}">${t.title}</div>
+            <div class="task-meta">
+              <span class="pill ${pillClass(t.priority)}">${t.priority}</span>
+              <span class="pill pill-time">⏱ ${t.estimatedTime}h</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-del" onclick="deleteTask(${t.id})">Delete</button>
+      </div>`).join('');
+  updateStats();
+}
+
+function updateStats(){
+  const pending=tasks.filter(t=>!t.done);
+  document.getElementById('total').textContent=tasks.length;
+  document.getElementById('pending').textContent=pending.length;
+  document.getElementById('completed').textContent=tasks.filter(t=>t.done).length;
+  const load=pending.reduce((s,t)=>s+(t.estimatedTime||0),0);
+  const bar=document.getElementById('loadBar');
+  bar.style.width=Math.min((load/8)*100,100)+'%';
+  bar.style.background=load<=4?'var(--success)':load<=8?'var(--warn)':'var(--danger)';
+  document.getElementById('loadText').textContent=`${load}h / 8h`;
+}
+</script>
+</body>
+</html>
